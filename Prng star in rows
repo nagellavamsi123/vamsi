@@ -1,0 +1,43 @@
+// addtion using function
+#include <stdio.h>
+void star_pattern(int n);
+void hash_pattern(int n);
+void percent_pattern(int n);
+int main(){
+    int a,b;
+    printf("Enter a number of rows : ");
+    scanf("%d",&a);
+    printf("\nEnter what pattern you want: \n1.star\n2.hash\n3.percent\n");
+    scanf("%d",&b);
+    switch(b){
+        case 1:star_pattern(a);
+            break;
+        case 2:hash_pattern(a);
+            break;
+        case 3:percent_pattern(a);
+            break;
+        default:printf("En ter valid selection ");
+    }
+    return 0;
+}
+void star_pattern(int n){
+    for(int i=0;i<n;i++){
+        for(int j=0;j<(n-i);j++)
+            printf("*");
+        printf("\n");
+    }
+}
+void hash_pattern(int n){
+    for(int i=0;i<n;i++){
+        for(int j=0;j<(n-i);j++)
+            printf("#");
+        printf("\n");
+    }
+}
+void percent_pattern(int n){
+    for(int i=0;i<n;i++){
+        for(int j=0;j<(n-i);j++)
+            printf("=");
+        printf("\n");
+    }
+}
