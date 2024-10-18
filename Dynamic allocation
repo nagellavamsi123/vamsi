@@ -1,0 +1,12 @@
+#include <stdio.h>
+int main() {
+    int *array,n;
+    array=(int*)malloc(n*sizeof(int));
+    printf("Enter no of data : ");
+    scanf("%d",&n);
+    for(int i=0;i<n;i++)
+        scanf("%d",array+i);
+    for(int i=0;i<n;i++)
+        printf("\n%d",*array+i);
+    return 0;
+}
