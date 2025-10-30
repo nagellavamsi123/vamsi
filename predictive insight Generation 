@@ -1,0 +1,36 @@
+import pandas as pd
+from sklearn.feature_extraction.text import CountVectorizer
+
+# Assuming you have columns: ['feedback', 'sentiment']
+df = pd.read_csv("cleaned_feedback.csv")
+
+# Filter for negative or neutral sentiments
+neg_neu = df[df['sentiment'].isin(['Negative', 'Neutral'])]
+
+# Extract common complaint terms
+vectorizer = CountVectorizer(stop_words='english', ngram_range=(1,2))
+X = vectorizer.fit_transform(neg_neu['feedback'])
+sum_words = X.sum(axis=0)
+words_freq = [(word, sum_words[0, idx]) for word, idx in vectorizer.vocabulary_.items()]
+freq_df = pd.DataFrame(words_freq, columns=['word', 'freq']).sort_values(by='freq', ascending=False)
+
+print(freq_df.head(10))
+df['date'] = pd.to_datetime(df['date'])
+df['score'] = df['sentiment'].map({'Positive': 5, 'Neutral': 3, 'Negative': 1})
+monthly_avg = df.groupby(df['date'].dt.to_period('M'))['score'].mean().reset_index()
+monthly_avg['date'] = monthly_avg['date'].dt.to_timestamp()
+from prophet import Prophet
+
+# Prepare for Prophet
+prophet_df = monthly_avg.rename(columns={'date': 'ds', 'score': 'y'})
+
+# Train model
+model = Prophet()
+model.fit(prophet_df)
+
+# Make future predictions
+future = model.make_future_dataframe(periods=30, freq='D')
+forecast = model.predict(future)
+
+# Plot forecast
+model.plot(forecast)
