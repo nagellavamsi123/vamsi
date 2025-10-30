@@ -1,0 +1,112 @@
+
+
+#Import libraries
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
+from transformers import DistilBertTokenizerFast, DistilBertForSequenceClassification, Trainer, TrainingArguments
+
+import torch
+import pickle
+df = pd.read_csv("cleaned_feedback.csv")
+df.head()
+
+# Columns expected: ['feedback', 'sentiment']
+print(df['sentiment'].value_counts())
+
+label_map = {'Negative': 0, 'Neutral': 1, 'Positive': 2}
+df['label'] = df['sentiment'].map(label_map)
+
+train_texts, test_texts, train_labels, test_labels = train_test_split(
+    df['feedback'].tolist(),
+    df['label'].tolist(),
+    test_size=0.2,
+    random_state=42,
+    stratify=df['label']
+)
+
+tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased')
+
+train_encodings = tokenizer(train_texts, truncation=True, padding=True)
+test_encodings = tokenizer(test_texts, truncation=True, padding=True
+
+class FeedbackDataset(torch.utils.data.Dataset):
+    def __init__(self, encodings, labels):
+        self.encodings = encodings
+        self.labels = labels
+
+    def __getitem__(self, idx):
+        item = {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
+        item['labels'] = torch.tensor(self.labels[idx])
+        return item
+
+    def __len__(self):
+        return len(self.labels)
+
+train_dataset = FeedbackDataset(train_encodings, train_labels)
+test_dataset = FeedbackDataset(test_encodings, test_labels)
+
+model = DistilBertForSequenceClassification.from_pretrained(
+    'distilbert-base-uncased',
+    num_labels=3
+)
+
+training_args = TrainingArguments(
+    output_dir='./results',
+    num_train_epochs=2,
+    per_device_train_batch_size=16,
+    per_device_eval_batch_size=16,
+    warmup_steps=50,
+    weight_decay=0.01,
+    logging_dir='./logs',
+    logging_steps=10,
+    evaluation_strategy="epoch",
+    save_strategy="epoch"
+)
+
+def compute_metrics(p):
+    preds = np.argmax(p.predictions, axis=1)
+    labels = p.label_ids
+    report = classification_report(labels, preds, output_dict=True, zero_division=0)
+    return {
+        'accuracy': accuracy_score(labels, preds),
+        'precision': report['weighted avg']['precision'],
+        'recall': report['weighted avg']['recall'],
+        'f1': report['weighted avg']['f1-score']
+    }
+
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=train_dataset,
+    eval_dataset=test_dataset,
+    compute_metrics=compute_metrics
+)
+
+trainer.train()
+
+
+results = trainer.evaluate()
+print("Evaluation Results:", results)
+
+# Generate detailed classification report
+predictions = trainer.predict(test_dataset)
+pred_labels = np.argmax(predictions.predictions, axis=1)
+print("\nClassification Report:\n", classification_report(test_labels, pred_labels, target_names=label_map.keys()))
+
+model.save_pretrained("./sentiment_model")
+tokenizer.save_pretrained("./sentiment_model")
+
+# Save Trainer’s model for easy load
+with open("sentiment_model.pkl", "wb") as f:
+    pickle.dump(model, f)
+
+print(" Model saved as sentiment_model.pkl")
+test_text = "The delivery was quick and the product quality is amazing!"
+tokens = tokenizer(test_text, return_tensors="pt", truncation=True, padding=True)
+output = model(**tokens)
+pred_label = torch.argmax(output.logits, dim=1).item()
+
+reverse_label = {v:k for k,v in label_map.items()}
+print(f"Predicted Sentiment: {reverse_label[pred_label]}")
