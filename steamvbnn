@@ -1,0 +1,46 @@
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+from transformers import DistilBertTokenizerFast, DistilBertForSequenceClassification, pipeline
+st.set_page_config(page_title="Customer Feedback Analyzer", layout="wide")
+st.title(" Customer Feedback Sentiment Dashboard")
+@st.cache_resource
+def load_model():
+    model = DistilBertForSequenceClassification.from_pretrained("./sentiment_model")
+    tokenizer = DistilBertTokenizerFast.from_pretrained("./sentiment_model")
+    sentiment_pipeline = pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
+    return sentiment_pipeline
+
+sentiment_pipeline = load_model()
+uploaded_file = st.file_uploader(" Upload feedback CSV", type=["csv"])
+
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
+    st.write("### Sample Data", df.head())
+
+    if "feedback" not in df.columns:
+        st.error("CSV must contain a column named 'feedback'")
+    else:
+        st.subheader("Sentiment Analysis")
+        df["predicted_sentiment"] = df["feedback"].apply(
+            lambda x: sentiment_pipeline(str(x)[:512])[0]["label"]
+        )
+        st.write(df.head()
+        st.subheader(" Sentiment Distribution")
+        fig = px.histogram(df, x="predicted_sentiment", color="predicted_sentiment",
+                           title="Sentiment Breakdown")
+        st.plotly_chart(fig, use_container_width=True
+        Summarization (optional short summary)
+        from transformers import pipeline as summarize_pipe
+        summarizer = summarize_pipe("summarization", model="facebook/bart-large-cnn")
+
+        long_text = " ".join(df["feedback"].astype(str).tolist())[:2500]
+        summary = summarizer(long_text, max_length=80, min_length=30, do_sample=False)[0]["summary_text"]
+        st.subheader("Overall Feedback Summary")
+        st.write(summary)
+
+        csv = df.to_csv(index=False).encode("utf-8")
+        st.download_button(" Download Results", csv, "feedback_with_sentiment.csv", "text/csv")
+
+else:
+    st.info(" Upload a CSV with a column named `feedback` to start analysis.")
