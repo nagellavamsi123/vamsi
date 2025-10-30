@@ -1,0 +1,22 @@
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+import nltk
+nltk.download('punkt')
+from nltk.tokenize import sent_tokenize
+
+def extractive_summary(text, num_sentences=2):
+    sentences = sent_tokenize(text)
+    if len(sentences) <= num_sentences:
+        return text
+    
+    vectorizer = TfidfVectorizer()
+    X = vectorizer.fit_transform(sentences)
+    sim_matrix = cosine_similarity(X, X)
+    scores = sim_matrix.sum(axis=1)
+    ranked_sentences = [sentences[i] for i in np.argsort(scores)[-num_sentences:]]
+    return " ".join(ranked_sentences)
+
+# Apply extractive summary
+df['extractive_summary'] = df['feedback'].apply(lambda x: extractive_summary(x, num_sentences=2))
+df[['feedback', 'extractive_summary']]
