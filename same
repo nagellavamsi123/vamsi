@@ -1,0 +1,43 @@
+
+import openai
+
+st.subheader("AI Chatbot – Customer Insights Assistant")
+st.write("Ask me anything about your customer feedback and improvement ideas!")
+
+# User question input
+user_query = st.text_input("Type your question here (e.g., 'What do customers dislike most?')")
+
+if user_query:
+    # Combine summarized feedback + user question
+    context = f"""
+    The summarized feedback from customers is as follows:
+    "{summary}"
+
+    Based on this, respond helpfully to the question below.
+    Suggest improvement ideas if relevant.
+    Question: {user_query}
+    """
+
+    try:
+        # --- Option 1: Using OpenAI API ---
+        completion = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a customer feedback insights assistant."},
+                {"role": "user", "content": context}
+            ],
+            temperature=0.7,
+            max_tokens=300
+        )
+        reply = completion.choices[0].message.content
+
+        # --- Option 2: (Offline / Hugging Face) ---
+        # from transformers import pipeline
+        # hf_bot = pipeline("text2text-generation", model="google/flan-t5-large")
+        # reply = hf_bot(f"Based on this feedback summary: {summary}\nQuestion: {user_query}", max_length=200)[0]['generated_text']
+
+        st.markdown("** Chatbot Response:**")
+        st.write(reply)
+
+    except Exception as e:
+        st.error(f"Chatbot Error: {e}")
